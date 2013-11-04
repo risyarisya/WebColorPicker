@@ -1,0 +1,51 @@
+<html>
+<head><title>Web Color Picker Options</title>
+<style>
+body{
+	padding: 0;
+	margin: 0;
+	text-align: center;
+}
+div#title {
+	background-color: #444;
+	color: #fff;
+	font-size: 15px;
+	font-family: Arial;
+	margin: 0;
+	padding: 10px;
+	font-weight: bold;
+}
+div#main {
+	width: 70%;
+	margin: 10px auto;
+}
+div#main ul {
+	text-align: left;
+	font-size: 12px;
+	margin: 20px auto 30px auto;
+}
+div#status {
+	font-weight: bold;
+	color: blue;
+	margin: 30px auto;
+}
+</style>
+<script type="text/javascript" src="./dist/options.js"></script>
+</head>
+<body>
+
+<div id="title">
+	Web Color Picker - options -
+</div>
+<div id="main">
+	<ul>
+		<li>image format &nbsp;&nbsp; &quot;JPEG&quot;<input type="radio" name="image_format" id="image_format_jpeg" checked="checked" />&nbsp;&quot;PNG&quot;<input type="radio" name="image_format" id="image_format_png" /></li>
+		<li>Use &nbsp;&quot; pixelated &quot; zoom image.<input type="radio" name="zoom_drawing" id="zoom_drawing_pixelated" checked="checked" />&nbsp;&quot;Normal&quot; zoom image<input type="radio" name="zoom_drawing" id="zoom_drawing_normal" /></li>
+		<li>Use &quot;auto clip board copy&quot; when click web page.  <input type="checkbox" id="auto_clip_board" checked="checked" /></li>
+	</ul>
+	<button id="save">Save</button> <button id="reset">Reset</button>
+	<div id="status"></div>
+</div>
+
+</body>
+</html>
