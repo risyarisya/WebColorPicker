@@ -16,13 +16,17 @@ module.exports = function(grunt) {
 		  }
 	      }
     },
+    watch: {
+	      files: ['js/*.js'],
+	      tasks:['uglify']
+    },
     clean: {
 	      files: ['dist/*.js', '*~' ]
     },
     compress: {
 	      zip: {
 		  files: {
-		      'WebColorPicker.zip': [ '*.html', 'dist/*.js'. 'manifest.json', '*.png' ]
+		      'WebColorPicker.zip': [ '*.html', 'dist/*.js', 'manifest.json', '*.png' ]
 		  }
 	      }
     }
@@ -39,6 +43,6 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-compress');
 
   // Default task.
-  grunt.registerTask('default', ['uglify']);
+  grunt.registerTask('default', ['uglify', 'watch']);
 
 };

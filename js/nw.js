@@ -21,7 +21,6 @@ var is_lock = false;
 //		}
 //	}
 //};
-var bg;
 
 function setSampleColor(e) {
 
@@ -46,7 +45,7 @@ function setSampleColor(e) {
 	document.getElementById("color").value = str;
 	document.getElementById("sample").style.backgroundColor = color;
 
-	bg.CP.copyToClipboard("#"+str);
+	copyToClipBoard("#"+str);
 }
 
 function getHistory() {
@@ -121,7 +120,7 @@ function appendHistory(color) {
 	obj.addEventListener('click', setSampleColor, true);
 	history.insertBefore(obj, list[0]);
 	
-	bg.CP.copyToClipboard("#"+DecToHex(color.R)+DecToHex(color.G)+DecToHex(color.B));
+	copyToClipBoard("#"+DecToHex(color.R)+DecToHex(color.G)+DecToHex(color.B));
 	chrome.windows.getCurrent(function(win) {
 		chrome.windows.update(win.id, {focused: !isMac() }, function() {});
 	});
@@ -155,7 +154,6 @@ function closeWindow(e) {
 
 	var el = document.getElementsByTagName('html')[0];
 	el.removeChild(document.body);
-	delete bg;
 	window.close();
 }
 function lock() {
@@ -192,8 +190,6 @@ function init() {
 	document.getElementById("clear_history").addEventListener("click", clearHistory, true);
 	document.getElementById("unlock").addEventListener("click", lock, true);
 	document.getElementById("lock").addEventListener("click", unlock, true);
-
-	bg = chrome.extension.getBackgroundPage();
 
 	var hs = getHistory().reverse();
 	for (var i=0; i<hs.length; i++) {

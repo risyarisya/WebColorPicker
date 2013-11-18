@@ -13,10 +13,12 @@ function DecToHex(dec) {
 }
 
 function copyToClipBoard(text) {
-    var input = document.getElementById("copy_area");
-    input.value = text;
-    input.select();
-    input.focus();
+    if (localStorage["auto_clip_board"] == 'true' || localStorage["auto_clip_board"] == undefined) {
+	var input = document.getElementById("color");
+	input.value = text;
+	input.select();
+	input.focus();
 
 	document.execCommand("copy", false, null);
- }
+    }
+}

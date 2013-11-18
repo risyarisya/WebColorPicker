@@ -5,24 +5,10 @@ var CP = {
     win_id: 0,		// windowのID
     
     is_capturing: false,
-    is_injected: false,
-    tablist: [],
-    
-    removeInjected : function(id) {
-	for (var i=0; i<CP.tablist.length; i++) {
-	    if (id==CP.tablist[i]) {
-		CP.tablist.splice(i, 1);
-		break;
-	    }
-	}
-    },
-    isInjected : function(id) {
-	for (var i=0; i<CP.tablist.length; i++) {
-	    if (id==CP.tablist[i]) {
-		return true;
-	    }
-	}
-	return false;
+    installed: false,
+
+    isActivated : function(id) {
+	return (CP.active_tabid == id);
     },
 
     // TabのScreenShotを撮る
@@ -47,44 +33,20 @@ var CP = {
 	} else {
 	    debuglog("deactivate called. remove overlay.");
 	    CP.updateBadge(false);
-	    chrome.tabs.sendRequest(CP.active_tabid, { "action": "deactivate" }, function() {CP.active_tabid = 0;});
+	    chrome.tabs.sendMessage(CP.active_tabid, { "action": "deactivate" }, function() {CP.active_tabid = 0;});
 	}
     },
     
     activate : function(tab) {
-	CP.active_tabid = tab.id;
 
 	var zoom_drawing = (localStorage["zoom_drawing"] == 'normal') ? 'normal' : 'pixel';
-	
-	if (CP.isInjected(tab.id)) {
-	    //console.log("already intejected. only activate.");
-	    // 既にinject済みの場合はactivateメッセージの送信のみ行う
+	if (!CP.isActivated(tab.id)) {
+	    CP.active_tabid = tab.id;
+	    debuglog("send activate");
 	    CP.updateBadge(true);
-	    chrome.tabs.sendRequest(CP.active_tabid, 
-	        { "action": "activate", "zoom_drawing":zoom_drawing }, 
-		function() { }
-	    );
-
-	} else {
-
-	    // 未injectの場合はInjectを行う
-	    //console.log("activate "+CP.active_tabid);
-	    chrome.tabs.executeScript(CP.active_tabid, {file:"./dist/content_script.js"}, function() {
-		    if (chrome.extension.lastError != undefined) {
-			console.log("Faild to exeuteScript.");
-			alert("Sorry, you cannot pick color from this page.");
-			if (CP.is_windowopen) {
-			    chrome.windows.remove(CP.win_id, function() {CP.win_id = 0;CP.is_windowopen = false;});
-			}
-		    } else {
-			debuglog("send activate");
-			CP.tablist.push(tab.id);
-			CP.updateBadge(true);
-			chrome.tabs.sendRequest(CP.active_tabid, 
-						{ "action": "activate", "zoom_drawing":zoom_drawing }, 
-						function() {});
-		  }
-	     });
+	    chrome.tabs.sendMessage(CP.active_tabid, 
+				{ "action": "activate", "zoom_drawing":zoom_drawing }, 
+				function() {});
 	}
     },
     
@@ -121,10 +83,6 @@ var CP = {
 	            CP.is_windowopen = true;
 	            CP.activate(tab);
 	    });
-
-	    CP.win_id = window.id;
-	    CP.is_windowopen = true;
-	    CP.activate(tab);
 	}
     },
     
@@ -141,6 +99,7 @@ var CP = {
 			return;
 		    }
 		}
+
 		CP.onBadgeClick(tab);
 	    });
 	
@@ -155,7 +114,7 @@ var CP = {
 		}
 	    });
 	
-	chrome.extension.onConnect.addListener(function(port) {
+	chrome.runtime.onConnect.addListener(function(port) {
 		port.onMessage.addListener(function(request) {
 			switch(request.action) {
 			case "imageUpdate":
@@ -171,7 +130,6 @@ var CP = {
 	chrome.tabs.onRemoved.addListener(function(tabid) {
 		if (CP.active_tabid && CP.active_tabid == tabid) {
 		    CP.deactivate({window_close: true });
-		    CP.removeInjected(tabid);
 		}
 	    });
 	
@@ -180,7 +138,6 @@ var CP = {
 		if (CP.active_tabid != 0 && CP.active_tabid == tabid) {
 		    debuglog("window update! ");
 		    CP.deactivate({window_close: true });
-		    CP.removeInjected(tabid);
 		}
 	    });
 	
@@ -189,19 +146,40 @@ var CP = {
 		// カラーピッカーwindowがWindow移動したとき
 		if (CP.win_id == info.oldWindowId) {
 		    // タブを閉じてdeactivate
-		    CP.removeInjected(tabid);
 		    chrome.tabs.remove(tabid, function() {});
 		    CP.deactivate({window_close: false });
 		}
 	    });
 	
+	chrome.runtime.onInstalled.addListener(function(details) {
+		console.log("installed");
+
+		chrome.tabs.getAllInWindow(function(tabs) {
+			for (tabid in tabs) {
+			    chrome.tabs.executeScript(tabs[tabid].id, {file:"./dist/content_script.js"}, function() {
+				    if (chrome.extension.lastError != undefined) {
+
+					console.log("Faild to exeuteScript. "+chrome.extension.lastError.message);
+				    }
+				});
+			}
+		    });
+	    });
+	chrome.runtime.onRestartRequired.addListener(function(details) {
+		console.log("restart");
+		chrome.tabs.getAllInWindow(function(tabs) {
+			for (tabid in tabs) {
+			    chrome.tabs.executeScript(tabs[tabid].id, {file:"./dist/content_script.js"}, function() {
+				    if (chrome.extension.lastError != undefined) {
+					console.log("Faild to exeuteScript.");
+				    }
+				});
+			}
+		    });
+	    });
     },
     
-    copyToClipboard: function(str) {
-	if (localStorage["auto_clip_board"] == 'true' || localStorage["auto_clip_board"] == undefined) {
-	    copyToClipBoard(str);
-	}
-    }
 };
 
-window.addEventListener("load", CP.init, false);
+CP.init();
+//window.addEventListener("load", CP.init, false);

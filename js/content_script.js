@@ -16,16 +16,18 @@ var CS = {
 	canvas: null,
 	ctx: null,
 	img_obj: null,
-	
+
+	port_to_win: null,
+	port_to_bg: null,
 
 	createOverLay: function() {
-//		console.log("createOverlay");
 		if (CS.is_activated) return;
-		
+		// console.log("createOverlay");		
 		CS.overlay = document.createElement('div');
 		CS.overlay.innerHtml = '&nbsp;';
-		CS.overlay.style.width = document.width+"px";
-		CS.overlay.style.height = document.height+"px";
+		CS.overlay.style.width = document.body.clientWidth+"px";
+		var height = Math.max.apply( null, [document.body.clientHeight , document.body.scrollHeight, document.documentElement.scrollHeight, document.documentElement.clientHeight] );
+		CS.overlay.style.height = height+"px";
 		CS.overlay.style.position = 'absolute';
 		CS.overlay.style.zIndex = '2147483647';
 		CS.overlay.style.top = '0px';
@@ -74,7 +76,12 @@ var CS = {
 		CS._y = -1;
 		CS.last_img_updating_timeout = 0;
 		CS.last_pos_timeout = 0;
-//		console.log("deactivated! "+CS.is_activated);
+
+		CS.port_to_bg.disconnect();
+		CS.port_to_bg = null;
+		CS.port_to_win.disconnect();
+		CS.port_to_win = null;
+		// console.log("deactivated! "+CS.is_activated);
 	},
 
 	changeScreen: function() {
@@ -86,11 +93,12 @@ var CS = {
 		}
 
 		CS.is_updating_img = true;
-
-		var port = chrome.extension.connect({name: "cs_to_bg"});
-		port.postMessage({"action":"imageUpdate"});
-		port.onMessage.addListener(function(res) {
-//			console.log("image captured!");
+		if (!CS.port_to_bg) {
+		    CS.port_to_bg = chrome.extension.connect({name: "cs_to_bg"});
+		}
+		CS.port_to_bg.postMessage({"action":"imageUpdate"});
+		CS.port_to_bg.onMessage.addListener(function(res) {
+			// console.log("image captured!");
 			CS.is_updating_img = false;
 			CS.loadCapture(res.data);
 		});
@@ -98,14 +106,14 @@ var CS = {
 
 	loadCapture: function(data) {
 		if (!CS.canvas) {
-//			console.log("create canvas");
+		        // console.log("create canvas");
 			CS.canvas = document.createElement("canvas");
 			CS.ctx = CS.canvas.getContext("2d");
 		}
-		CS.canvas.width = window.innerWidth;
-		CS.canvas.height = window.innerHeight;
 		CS.img_obj = document.createElement('img');
 		CS.img_obj.src = data;
+		CS.canvas.width = window.innerWidth;
+		CS.canvas.height = window.innerHeight;
 		CS.is_loading = true;
 	},	
 	
@@ -133,9 +141,11 @@ var CS = {
 		
 	},
 	
-	zoom : function(x, y) {
+	zoom : function(px, py) {
 		if (CS.is_loading) return '';
-		
+		var ret = CS.convertPos(px, py);
+		var x = ret.x;
+		var y = ret.y;
 		var canvas = document.createElement("canvas");
 		canvas.width = 96;
 		canvas.height = 96;
@@ -178,7 +188,8 @@ var CS = {
 	
 	pick: function(x, y) {
 		if (!CS.ctx) return null;
-		var data = CS.ctx.getImageData(x, y, 1, 1).data;
+		var pos = CS.convertPos(x, y);
+		var data = CS.ctx.getImageData(pos.x, pos.y, 1, 1).data;
 		var color = {
 			"R":data[0],
 			"G":data[1],
@@ -187,18 +198,36 @@ var CS = {
 		data = null;
 		return color;
 	},
-	
+	convertPos: function(x, y) {
+    		var imgWidth = CS.canvas.width;
+		var imgHeight = CS.canvas.height;
+		var winWidth = window.innerWidth;
+		var winHeight = window.innerHeight;
+
+		var rateX = imgWidth / winWidth;
+		var rateY = imgHeight / winHeight;
+		return {"x":rateX*x, "y":rateY*y};
+        },
 	setPos: function() {
 
 		if (!CS.is_activated) return;
-
+		var imgWidth = 0;
+		var imgHeight = 0;
+		var winWidth = window.innerWidth;
+		var winHeight = window.innerHeight;
+ 
 		if (CS.is_loading) {
 			if (CS.img_obj.complete) {
-				CS.ctx.drawImage(CS.img_obj, 0, 0);
-				CS.img_obj.src = '';
-				CS.img_obj = null;
-				CS.is_loading = false;
-//				console.log("capture complete");
+			    imgWidth = CS.img_obj.width;
+			    imgHeight = CS.img_obj.height;
+
+			    CS.canvas.width = CS.img_obj.width;
+			    CS.canvas.height = CS.img_obj.height;
+			    CS.ctx.drawImage(CS.img_obj, 0, 0);
+			    CS.img_obj.src = '';
+			    CS.img_obj = null;
+			    CS.is_loading = false;
+			    // console.log("capture complete");
 			} else {
 				return null;
 			}
@@ -209,22 +238,22 @@ var CS = {
 			CS.last_pos_timeout = window.setTimeout(function() { CS.setPos(); }, 500);
 			return;
 		}
-		
 		var x = CS._x - window.pageXOffset;
 		var y = CS._y - window.pageYOffset;
-
 		var color = CS.pick(x, y);
 		
 		if (color) {
-			var img = CS.zoom(x, y);
-			if (img) {
-				CS.is_pos_updating = true;
-				var port = chrome.extension.connect({name: "cs_to_win"});
-				port.postMessage({"action":"setColor", "color":color, "zoom":img});
-				port.onMessage.addListener(function(res) {
-					CS.is_pos_updating = false;
-				});
+		    var img = CS.zoom(x, y);
+		    if (img) {
+			CS.is_pos_updating = true;
+			if (!CS.port_to_win) {
+			    CS.port_to_win = chrome.extension.connect({name: "cs_to_win"});
 			}
+			CS.port_to_win.postMessage({"action":"setColor", "color":color, "zoom":img});
+			CS.port_to_win.onMessage.addListener(function(res) {
+				CS.is_pos_updating = false;
+			    });
+		    }
 		}
 	},
 	
@@ -241,35 +270,36 @@ var CS = {
 			CS._y = e.pageY;
 			CS.setPos();
 		}
-		//		console.log("xxxxx");
 		e.preventDefault();
 	},
 
 	onMouseClick: function(e) {
 		if (!CS.is_activated || CS.is_capturing) return;
-//		console.log("[recv] onMouseClick");
+		// console.log("[recv] onMouseClick");
 		
 		var x = e.pageX - window.pageXOffset;
 		var y = e.pageY - window.pageYOffset;
 		var color = CS.pick(x, y);
 
 		if (color != null) {
-			var port = chrome.extension.connect({name: "cs_to_win"});
-			port.postMessage({"action":"saveColor", "color":color});
+		    if (!CS.port_to_win) {
+			CS.port_to_win = chrome.extension.connect({name: "cs_to_win"});
+		    }
+		    CS.port_to_win.postMessage({"action":"saveColor", "color":color});
 		}
 		e.preventDefault();
 	},
 	
 	onWindowResize: function(e) {
 		if (!CS.is_activated) return;
-		CS.overlay.style.width = document.width+"px";
-		CS.overlay.style.height = document.height+"px";
+		CS.overlay.style.width = document.body.clientWidth+"px";
+		var height = Math.max.apply( null, [document.body.clientHeight , document.body.scrollHeight, document.documentElement.scrollHeight, document.documentElement.clientHeight] );
+		CS.overlay.style.height = height+"px";
 		CS.changeScreen();
 	},
 
 	init: function() {
-
-		chrome.extension.onRequest.addListener(function(request, sender, response) {
+		chrome.extension.onMessage.addListener(function(request, sender, response) {
 			switch(request.action) {
 			case "activate":
 			//console.log("[recv] activate.");
@@ -277,7 +307,7 @@ var CS = {
 				CS.activate();
 				break;
 			case "deactivate":
-			//	console.log("[recv] deactivate.");
+			//console.log("[recv] deactivate.");
 			        CS.deactivate();
 				break;
 			case "isInjected":
