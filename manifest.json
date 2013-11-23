@@ -16,7 +16,7 @@
    },
    "name": "WebColor Picker",
    "options_page": "options.html",
-   "permissions": [ "tabs", "*://*/*", "background" ],
+   "permissions": [ "tabs", "*://*/*", "background", "clipboardWrite" ],
    "update_url": "http://clients2.google.com/service/update2/crx",
    "content_scripts":[
    {

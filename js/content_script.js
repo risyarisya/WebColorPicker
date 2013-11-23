@@ -39,7 +39,7 @@ var CS = {
 	},
 		
 	activate: function() {
-		if (CS.is_activated) return;
+		if (CS.is_activated) return false;
 		
 		CS.createOverLay();
 
@@ -51,7 +51,7 @@ var CS = {
 		window.addEventListener("scroll", CS.onScrollStop);
 		window.addEventListener("resize", CS.onWindowResize);
 		CS.overlay.addEventListener("click", CS.onMouseClick, true);
-
+		return true;
 	},
 	
 	deactivate: function() {
@@ -76,11 +76,14 @@ var CS = {
 		CS._y = -1;
 		CS.last_img_updating_timeout = 0;
 		CS.last_pos_timeout = 0;
-
-		CS.port_to_bg.disconnect();
-		CS.port_to_bg = null;
-		CS.port_to_win.disconnect();
-		CS.port_to_win = null;
+		if (CS.port_to_bg) {
+		    CS.port_to_bg.disconnect();
+		    CS.port_to_bg = null;
+		}
+		if (CS.port_to_win) {
+		    CS.port_to_win.disconnect();
+		    CS.port_to_win = null;
+		}
 		// console.log("deactivated! "+CS.is_activated);
 	},
 
@@ -299,19 +302,22 @@ var CS = {
 	},
 
 	init: function() {
-		chrome.extension.onMessage.addListener(function(request, sender, response) {
+		chrome.runtime.onMessage.addListener(function(request, sender, response) {
 			switch(request.action) {
 			case "activate":
-			//console.log("[recv] activate.");
+			        // console.log("[recv] activate.");
 				CS.zoom_drawing = request.zoom_drawing;
-				CS.activate();
+			        if(CS.activate()) {
+				    response({});
+				}
 				break;
 			case "deactivate":
-			//console.log("[recv] deactivate.");
+			// console.log("[recv] deactivate.");
 			        CS.deactivate();
+			        response({});
 				break;
 			case "isInjected":
-			//console.log("[recv] isInjected.");
+			// console.log("[recv] isInjected.");
 				response({});
 				break;
 			}

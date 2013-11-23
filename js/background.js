@@ -28,12 +28,17 @@ var CP = {
 		chrome.windows.remove(CP.win_id, function() {
 			CP.win_id = 0;
 			CP.is_windowopen=false;
+			CP.active_tabid = 0;
 		});
 	    }
 	} else {
 	    debuglog("deactivate called. remove overlay.");
 	    CP.updateBadge(false);
-	    chrome.tabs.sendMessage(CP.active_tabid, { "action": "deactivate" }, function() {CP.active_tabid = 0;});
+	    var tabid = CP.active_tabid;
+	    CP.active_tabid = 0;
+	    chrome.tabs.sendMessage(tabid, { "action": "deactivate" }, function() {
+		    console.log("[recv] deactivated."); 
+	    });
 	}
     },
     
@@ -46,7 +51,7 @@ var CP = {
 	    CP.updateBadge(true);
 	    chrome.tabs.sendMessage(CP.active_tabid, 
 				{ "action": "activate", "zoom_drawing":zoom_drawing }, 
-				function() {});
+				   function(response) { debuglog("activated."); });
 	}
     },
     
@@ -75,9 +80,9 @@ var CP = {
 	} else {
 	    // Windowがない場合
 	    var panelURL = chrome.extension.getURL("nw.html");
-	    var height = (window.navigator.platform.indexOf("Mac")!=-1) ? 145 : 175;
+	    var height = (window.navigator.platform.indexOf("Mac")!=-1) ? 135 : 175;
 
-	    chrome.windows.create({url: panelURL, type: "popup", focused: true, width:300, height:height}, function(window){
+	    chrome.windows.create({url: panelURL, type: "popup", focused: true, width:290, height:height}, function(window){
 		    debuglog("window create");
 	            CP.win_id = window.id;
 	            CP.is_windowopen = true;
@@ -85,7 +90,15 @@ var CP = {
 	    });
 	}
     },
-    
+    execScript: function(id) {
+	chrome.tabs.executeScript(id, {file:"./dist/content_script.js"}, function() {
+	    debuglog("exec script "+id);
+	    if (chrome.extension.lastError != undefined) {
+		console.log("Faild to exeuteScript. "+chrome.extension.lastError.message);
+	    }
+	});
+
+    },
     init : function() {
 	chrome.browserAction.onClicked.addListener(function(tab) {
 		var NGList = ["https://chrome.google.com/extensions",
@@ -155,13 +168,10 @@ var CP = {
 		console.log("installed");
 
 		chrome.tabs.getAllInWindow(function(tabs) {
+			console.log(tabs);
 			for (tabid in tabs) {
-			    chrome.tabs.executeScript(tabs[tabid].id, {file:"./dist/content_script.js"}, function() {
-				    if (chrome.extension.lastError != undefined) {
-
-					console.log("Faild to exeuteScript. "+chrome.extension.lastError.message);
-				    }
-				});
+			    var id = tabs[tabid].id;
+			    CP.execScript(id);
 			}
 		    });
 	    });

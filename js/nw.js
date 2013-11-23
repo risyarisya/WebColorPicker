@@ -41,7 +41,7 @@ function setSampleColor(e) {
 	var hexG = DecToHex(Number(G));
 	var hexB = DecToHex(Number(B));
 	var str = hexR+hexG+hexB;
-	
+	console.log(hexR+" "+hexG+" "+hexB);
 	document.getElementById("color").value = str;
 	document.getElementById("sample").style.backgroundColor = color;
 

@@ -1,4 +1,4 @@
-var DEBUG = false;
+var DEBUG =false;
 
 function debuglog(message) {
 	if (!DEBUG) return;
@@ -14,11 +14,13 @@ function DecToHex(dec) {
 
 function copyToClipBoard(text) {
     if (localStorage["auto_clip_board"] == 'true' || localStorage["auto_clip_board"] == undefined) {
-	var input = document.getElementById("color");
+	var input = document.createElement("input");
+        input.type = 'text';
+        document.body.appendChild(input);
 	input.value = text;
-	input.select();
 	input.focus();
-
-	document.execCommand("copy", false, null);
+	input.select();
+	document.execCommand("copy");
+        document.body.removeChild(input);
     }
 }

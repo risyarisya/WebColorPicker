@@ -24,10 +24,12 @@ module.exports = function(grunt) {
 	      files: ['dist/*.js', '*~' ]
     },
     compress: {
-	      zip: {
-		  files: {
-		      'WebColorPicker.zip': [ '*.html', 'dist/*.js', 'manifest.json', '*.png' ]
-		  }
+	      main: {
+		  options: {
+		      archive: 'WebColorPicker.zip',
+		      mode: 'zip'
+		  },
+		  files: [ { src: ['*.html', 'dist/*.js', 'manifest.json', '*.png' ] } ]
 	      }
     }
       
